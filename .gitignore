@@ -1,0 +1,24 @@
+# Node & Build
+node_modules/
+build/
+dist/
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# System
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Specific paths (optional)
+backend/node_modules/
+frontend/node_modules/
+backend/.env
+frontend/.env
