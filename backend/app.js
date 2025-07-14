@@ -3,6 +3,7 @@ import connectDB from "./mongoose/connection.js"
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors" ;
+import authRoute from "./routes/auth.route.js";
 
 
 dotenv.config({
@@ -33,3 +34,5 @@ connectDB()
     console.log("MONGODB connection failed!!! ",err)
 })
 
+
+app.use("/api/auth", authRoute);
