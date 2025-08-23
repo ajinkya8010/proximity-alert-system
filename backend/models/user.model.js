@@ -1,44 +1,17 @@
+// models/User.js
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true
-    },
-    password: {
-      type: String,
-      required: true
-    },
-    interests: {
-      type: [String],
-      default: []
-    },
-    location: {
-      type: {
-        type: String,
-        enum: ["Point"],
-        default: "Point"
-      },
-      coordinates: {
-        type: [Number], // [longitude, latitude]
-        required: true
-      }
-    }
+const userSchema = new mongoose.Schema({
+  location: {
+    type: String,
+    required: true
   },
-  {
-    timestamps: true
+  interests: {
+    type: [String],
+    default: []
   }
-);
+});
 
-// Create a 2dsphere index for geospatial queries
-userSchema.index({ location: "2dsphere" });
+const User = mongoose.model("User", userSchema);
 
-export const User = mongoose.model("User", userSchema);
+export default User;

@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors" ;
 import authRoute from "./routes/auth.route.js";
+import userRoute from "./routes/user.route.js";
 
 
 dotenv.config({
@@ -36,3 +37,4 @@ connectDB()
 
 
 app.use("/api/auth", authRoute);
+app.use("/api/user", userRoute);
