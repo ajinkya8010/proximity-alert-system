@@ -175,7 +175,7 @@ export const deleteAlert = async (req, res) => {
     }
 
     // ✅ TODO 4: Check if logged-in user is owner
-    if (alert.user.toString() !== req.userId) {
+    if (alert.createdBy.toString() !== req.userId) {
       return res.status(403).json({ message: "Unauthorized to delete this alert" });
     }
 
