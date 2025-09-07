@@ -99,3 +99,30 @@ export const getInterests = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+// ---------------- UPDATE ALERT RADIUS ----------------
+export const updateAlertRadius = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { radius } = req.body;
+
+    if (!radius || radius < 500 || radius > 20000) {
+      return res.status(400).json({ 
+        message: "Radius must be between 500m and 20km." 
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.alertRadius = radius;
+    await user.save();
+
+    res.status(200).json({ 
+      message: "Alert radius updated successfully", 
+      alertRadius: user.alertRadius 
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};

@@ -31,6 +31,12 @@ const userSchema = new mongoose.Schema(
         type: [Number], // [longitude, latitude]
         required: true
       }
+    },
+    alertRadius: {
+      type: Number,
+      default: 3000,
+      min: 500,  
+      max: 10000    
     }
   },
   {

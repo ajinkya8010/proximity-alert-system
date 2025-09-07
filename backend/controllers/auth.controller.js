@@ -8,7 +8,7 @@ const maxAge = 1000 * 60 * 60 * 24 * 7;
 // ---------------- REGISTER ----------------
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, interests, location } = req.body;
+    const { name, email, password, interests, location, alertRadius  } = req.body;
 
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -28,6 +28,7 @@ export const registerUser = async (req, res) => {
       password: hashedPassword,
       interests,
       location,
+      alertRadius
     });
 
     const savedUser = await newUser.save();

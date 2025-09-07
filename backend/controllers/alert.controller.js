@@ -4,28 +4,32 @@ import { User } from "../models/user.model.js";
 // ---------------- CREATE ALERT ----------------
 export const createAlert = async (req, res) => {
   try {
-    // ✅ TODO 1: Extract { title, category, description, location } from req.body
     const { title, category, description, location } = req.body;
-
-    // ✅ TODO 2: Get userId from req.userId (set by auth middleware)
     const userId = req.userId;
 
-    // ✅ TODO 3: Validate required fields
-    if (!title || !category || !description || !location) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Validate required fields
+    if (!title) return res.status(400).json({ message: "Title is required" });
+    if (!category) return res.status(400).json({ message: "Category is required" });
+    if (!description) return res.status(400).json({ message: "Description is required" });
+    if (!location || !location.coordinates || location.coordinates.length !== 2) {
+      return res.status(400).json({ message: "Valid location (longitude, latitude) is required" });
     }
 
-    // ✅ TODO 4: Create new alert in DB
+    // Create alert
     const newAlert = await Alert.create({
       title,
       category,
       description,
       location,
-      user: userId,
+      createdBy: userId, // ✅ fixed field name
     });
 
-    // ✅ TODO 5: Return created alert in response
-    res.status(201).json({ message: "Alert created successfully", alert: newAlert });
+    res.status(201).json({
+      message: "Alert created successfully",
+      alert: newAlert,
+    });
+
+    // TODO (later): emit socket event to nearby users
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -49,31 +53,36 @@ export const getAllAlerts = async (req, res) => {
 // ---------------- GET ALERTS NEAR ME ----------------
 export const getAlertsNearMe = async (req, res) => {
   try {
-    // ✅ TODO 1: Get userId from req.userId
+    // ✅ 1. Get userId from auth middleware
     const userId = req.userId;
 
-    // ✅ TODO 2: Fetch user's location from DB
-    const user = await User.findById(userId);
+    // ✅ 2. Fetch user's location + radius
+    const user = await User.findById(userId).select("location alertRadius");
     if (!user || !user.location) {
       return res.status(404).json({ message: "User location not found" });
     }
 
-    // ✅ TODO 3: Run geospatial query on alerts using user’s location
+    // ✅ 3. Use user's preferred alertRadius (fallback to default if not set)
+    const radius = user.alertRadius || 3000; // default = 3km
+
+    // ✅ 4. Run geospatial query on alerts
     const alerts = await Alert.find({
       location: {
         $near: {
           $geometry: user.location,
-          $maxDistance: 5000, // 5 km radius (adjustable)
+          $maxDistance: radius, // <-- user-defined
         },
       },
-    });
+    }).sort({ createdAt: -1 });
 
-    // ✅ TODO 4: Return nearby alerts
-    res.status(200).json({ alerts });
+    // ✅ 5. Return nearby alerts
+    res.status(200).json({ alerts, radius });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 // ---------------- GET ALERTS BY CATEGORY ----------------
 export const getAlertsByCategory = async (req, res) => {
@@ -99,40 +108,57 @@ export const getAlertsByCategory = async (req, res) => {
 // ---------------- GET ALERTS NEARBY BY CATEGORY ----------------
 export const getAlertsNearbyByCategory = async (req, res) => {
   try {
-    // ✅ TODO 1: Extract { category } from req.params
-    const { category } = req.params;
-
-    // ✅ TODO 2: Get userId from req.userId
     const userId = req.userId;
+    const { categories } = req.body; // expecting an array, e.g. ["jobs", "tutoring"]
 
-    // ✅ TODO 3: Fetch user's location from DB
-    const user = await User.findById(userId);
+    // ✅ Check categories format
+    if (!categories || !Array.isArray(categories) || categories.length === 0) {
+      return res.status(400).json({ message: "Categories must be a non-empty array." });
+    }
+
+    // ✅ Fixed set of valid categories
+    const validCategories = [
+      "blood_donation",
+      "jobs",
+      "tutoring",
+      "lost_and_found",
+      "urgent_help",
+      "food_giveaway",
+      "disaster_alert"
+    ];
+
+    // ✅ Filter only valid categories
+    const filteredCategories = categories.filter((c) =>
+      validCategories.includes(c)
+    );
+    if (filteredCategories.length === 0) {
+      return res.status(400).json({ message: "No valid categories provided." });
+    }
+
+    // ✅ Get user location + radius
+    const user = await User.findById(userId).select("location alertRadius");
     if (!user || !user.location) {
       return res.status(404).json({ message: "User location not found" });
     }
 
-    // ✅ TODO 4: Validate category
-    if (!category) {
-      return res.status(400).json({ message: "Category is required" });
-    }
-
-    // ✅ TODO 5: Run geospatial query on alerts matching category + nearby location
+    // ✅ Query alerts nearby that match any of the categories
     const alerts = await Alert.find({
-      category,
+      category: { $in: filteredCategories },
       location: {
         $near: {
           $geometry: user.location,
-          $maxDistance: 5000, // 5 km radius
-        },
-      },
-    });
+          $maxDistance: user.alertRadius || 5000
+        }
+      }
+    }).sort({ createdAt: -1 });
 
-    // ✅ TODO 6: Return filtered alerts
     res.status(200).json({ alerts });
   } catch (err) {
+    console.error("❌ Error in getAlertsNearbyByCategory:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 // ---------------- DELETE ALERT ----------------
 export const deleteAlert = async (req, res) => {
