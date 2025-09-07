@@ -4,6 +4,7 @@ import {
   getAllAlerts,
   getAlertsNearMe,
   getAlertsByCategory,
+  getAlertsNearbyByCategory,
   deleteAlert,
 } from "../controllers/alert.controller.js";
 import { verifyToken } from "../middlewares/verifyToken.js"; 
