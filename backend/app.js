@@ -9,7 +9,7 @@ import cors from "cors";
 import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/user.route.js";
 import alertRoute from "./routes/alert.route.js"; 
-//import alertSocketHandler from "./sockets/alert.socket.js"; 
+import alertSocketHandler from "./sockets/alert.socket.js"; 
 
 
 dotenv.config({ path: "./.env" });
@@ -51,15 +51,14 @@ app.use("/api/alerts", alertRoute);
 
 
 // ---------------- SOCKET HANDLERS ----------------
+const onlineUsers = new Map();
+app.set("onlineUsers", onlineUsers);
+
 io.on("connection", (socket) => {
   console.log("⚡ User connected:", socket.id);
 
-  // handle alert-related socket events
-  alertSocketHandler(io, socket);
-
-  socket.on("disconnect", () => {
-    console.log("❌ User disconnected:", socket.id);
-  });
+  // pass onlineUsers into handler
+  alertSocketHandler(io, socket, onlineUsers);
 });
 
 

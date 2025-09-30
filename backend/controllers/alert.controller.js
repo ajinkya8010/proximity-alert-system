@@ -1,5 +1,6 @@
 import { Alert } from "../models/alert.model.js";
 import { User } from "../models/user.model.js";
+import { haversineDistance } from "../utils/distance.js";
 
 // ---------------- CREATE ALERT ----------------
 export const createAlert = async (req, res) => {
@@ -7,7 +8,7 @@ export const createAlert = async (req, res) => {
     const { title, category, description, location } = req.body;
     const userId = req.userId;
 
-    // Validate required fields
+    // ---------------- VALIDATION ----------------
     if (!title) return res.status(400).json({ message: "Title is required" });
     if (!category) return res.status(400).json({ message: "Category is required" });
     if (!description) return res.status(400).json({ message: "Description is required" });
@@ -15,23 +16,51 @@ export const createAlert = async (req, res) => {
       return res.status(400).json({ message: "Valid location (longitude, latitude) is required" });
     }
 
-    // Create alert
+    // ---------------- DB SAVE ----------------
     const newAlert = await Alert.create({
       title,
       category,
       description,
       location,
-      createdBy: userId, // ✅ fixed field name
+      createdBy: userId,
     });
+
+    // ---------------- SOCKET EMISSION ----------------
+    const io = req.app.get("io");
+
+    // 1. Find all users who have this category in interests
+    const interestedUsers = await User.find({
+      interests: category,
+      location: {
+        $near: {
+          $geometry: location,
+          $maxDistance: 10000, // hard cap at 10km for performance
+        },
+      },
+    }).select("_id location alertRadius");
+
+    // 2. Filter them by their personal radius
+    for (const user of interestedUsers) {
+      const distance = haversineDistance(location.coordinates, user.location.coordinates);
+
+      if (distance <= user.alertRadius) {
+        // You need to map users -> socket IDs somewhere (like onlineUsers Map)
+        const socketId = req.app.get("onlineUsers")?.get(user._id.toString());
+        if (socketId) {
+          io.to(socketId).emit("new_alert", newAlert);
+        }
+      }
+    }
+
+    console.log("📢 Emitted alert:", newAlert._id);
 
     res.status(201).json({
       message: "Alert created successfully",
       alert: newAlert,
     });
 
-    // TODO (later): emit socket event to nearby users
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error in createAlert:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
