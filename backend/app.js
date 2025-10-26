@@ -23,8 +23,9 @@ const PORT = process.env.PORT || 3001;
 // ---------------- SOCKET.IO SETUP ----------------
 const io = new Server(server, {
   cors: {
-    origin: "*", // in production replace with frontend URL
+    origin: "http://localhost:3000", // Must match frontend URL when using credentials
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -36,8 +37,8 @@ app.set("io", io);
 // ---------------- MIDDLEWARE ----------------
 app.use(
   cors({
-    origin: "*",
-    credentials: false,
+    origin: "http://localhost:3000", // Your frontend URL
+    credentials: true,
   })
 );
 app.use(express.json());
