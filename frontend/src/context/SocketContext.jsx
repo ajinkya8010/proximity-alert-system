@@ -22,7 +22,7 @@ export const SocketContextProvider = ({ children }) => {
       });
 
       // Connection event handlers
-      newSocket.on("connect", () => {
+      newSocket.on("connect", async () => {
         console.log("🔌 Connected to server:", newSocket.id);
         setIsConnected(true);
         
@@ -34,6 +34,30 @@ export const SocketContextProvider = ({ children }) => {
         if (currentUser.interests && currentUser.interests.length > 0) {
           newSocket.emit("subscribe_categories", currentUser.interests);
           console.log("📡 Subscribed to categories:", currentUser.interests);
+        }
+
+        // Fetch existing alerts from API (nearby + subscribed categories only)
+        if (currentUser.interests && currentUser.interests.length > 0) {
+          try {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts/near-by-category`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                categories: currentUser.interests
+              })
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              setAlerts(data.alerts || []);
+              console.log("📋 Loaded existing alerts (nearby + subscribed):", data.alerts?.length || 0);
+            }
+          } catch (error) {
+            console.error("❌ Failed to fetch existing alerts:", error);
+          }
         }
       });
 

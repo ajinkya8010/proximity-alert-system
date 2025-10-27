@@ -14,6 +14,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
+// Create custom red icon for alerts
+const alertIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 function HomePage() {
   const { currentUser } = useContext(AuthContext);
   const { alerts, isConnected } = useSocket();
@@ -74,10 +84,17 @@ function HomePage() {
             <>
               <Marker position={mapCenter}>
                 <Popup>
-                  <div className="text-center">
-                    <strong>Your Location</strong>
-                    <br />
-                    {currentUser.name}
+                  <div className="min-w-[180px] p-2 text-center">
+                    <div className="flex items-center justify-center space-x-2 mb-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Your Location
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">📍 {currentUser.name}</h3>
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <div>Alert Radius: {(currentUser.alertRadius / 1000).toFixed(1)}km</div>
+                      <div>Interests: {currentUser.interests?.length || 0} categories</div>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -101,14 +118,24 @@ function HomePage() {
             if (alert.location?.coordinates) {
               const [lng, lat] = alert.location.coordinates;
               return (
-                <Marker key={alert._id || index} position={[lat, lng]}>
+                <Marker key={alert._id || index} position={[lat, lng]} icon={alertIcon}>
                   <Popup>
-                    <div>
-                      <strong>{alert.title}</strong>
-                      <br />
-                      <span className="text-sm text-gray-600">{alert.category}</span>
-                      <br />
-                      <p className="text-sm mt-1">{alert.description}</p>
+                    <div className="min-w-[200px] p-2">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          {alert.category?.replace('_', ' ') || 'Alert'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(alert.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-1">{alert.title}</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">{alert.description}</p>
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <span className="text-xs text-gray-500">
+                          📍 {new Date(alert.createdAt).toLocaleTimeString()}
+                        </span>
+                      </div>
                     </div>
                   </Popup>
                 </Marker>
