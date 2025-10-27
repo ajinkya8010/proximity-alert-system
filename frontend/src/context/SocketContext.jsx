@@ -26,6 +26,10 @@ export const SocketContextProvider = ({ children }) => {
         console.log("🔌 Connected to server:", newSocket.id);
         setIsConnected(true);
         
+        // Register user ID with socket ID on backend
+        newSocket.emit("register_user", currentUser._id);
+        console.log("👤 Registered user:", currentUser._id);
+        
         // Subscribe to user's interest categories
         if (currentUser.interests && currentUser.interests.length > 0) {
           newSocket.emit("subscribe_categories", currentUser.interests);
