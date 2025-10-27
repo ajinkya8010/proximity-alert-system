@@ -18,12 +18,13 @@ dotenv.config({ path: "./.env" });
 const app = express();
 const server = http.createServer(app); 
 const PORT = process.env.PORT || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 
 // ---------------- SOCKET.IO SETUP ----------------
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000", // Must match frontend URL when using credentials
+    origin: FRONTEND_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -35,12 +36,11 @@ app.set("io", io);
 
 
 // ---------------- MIDDLEWARE ----------------
-app.use(
-  cors({
-    origin: "http://localhost:3000", // Your frontend URL
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: FRONTEND_URL,
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 
