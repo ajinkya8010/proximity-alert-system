@@ -1,128 +1,90 @@
 import { User } from "../models/user.model.js";
 
-// ---------------- SAVE LOCATION ----------------
-export const saveLocation = async (req, res) => {
+// ---------------- UPDATE PROFILE ----------------
+export const updateProfile = async (req, res) => {
   try {
     const userId = req.userId; // from auth middleware
-    const { coordinates } = req.body; // expecting [longitude, latitude]
+    const { name, location, alertRadius, interests } = req.body;
 
-    if (
-      !coordinates ||
-      !Array.isArray(coordinates) ||
-      coordinates.length !== 2
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Location must be [longitude, latitude]." });
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found." });
+    // Validate and update name
+    if (name !== undefined) {
+      if (!name || name.trim().length === 0) {
+        return res.status(400).json({ message: "Name cannot be empty" });
+      }
+      user.name = name.trim();
+    }
 
-    user.location = {
-      type: "Point",
-      coordinates,
-    };
+    // Validate and update location
+    if (location !== undefined) {
+      if (location.coordinates && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+        const [lng, lat] = location.coordinates;
+        if (typeof lng === 'number' && typeof lat === 'number' && 
+            lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90) {
+          user.location = {
+            type: "Point",
+            coordinates: location.coordinates
+          };
+        } else {
+          return res.status(400).json({ message: "Invalid location coordinates" });
+        }
+      } else if (location !== null) {
+        return res.status(400).json({ message: "Location must have valid coordinates [longitude, latitude]" });
+      }
+    }
 
+    // Validate and update alert radius
+    if (alertRadius !== undefined) {
+      const radius = parseInt(alertRadius);
+      if (isNaN(radius) || radius < 500 || radius > 10000) {
+        return res.status(400).json({ message: "Alert radius must be between 500m and 10km" });
+      }
+      user.alertRadius = radius;
+    }
+
+    // Validate and update interests
+    if (interests !== undefined) {
+      if (!Array.isArray(interests)) {
+        return res.status(400).json({ message: "Interests must be an array" });
+      }
+
+      // Valid interest categories (matching alert categories)
+      const validInterests = [
+        "blood_donation",
+        "jobs", 
+        "tutoring",
+        "lost_and_found",
+        "urgent_help",
+        "food_giveaway",
+        "disaster_alert"
+      ];
+
+      // Filter only valid interests
+      const filteredInterests = interests.filter(interest => 
+        validInterests.includes(interest)
+      );
+
+      user.interests = filteredInterests;
+    }
+
+    // Save the updated user
     await user.save();
+
+    // Return updated user data (excluding password)
+    const updatedUser = await User.findById(userId).select("-password");
 
     res.status(200).json({
-      message: "Location saved successfully.",
-      location: user.location,
+      message: "Profile updated successfully",
+      user: updatedUser
     });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-// ---------------- GET LOCATION ----------------
-export const getLocation = async (req, res) => {
-  try {
-    const userId = req.userId;
-
-    const user = await User.findById(userId).select("location");
-    if (!user) return res.status(404).json({ message: "User not found." });
-
-    res.status(200).json({ location: user.location });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-
-// ---------------- ADD OR UPDATE INTERESTS ----------------
-export const saveInterests = async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { interests } = req.body;
-
-    if (!interests || !Array.isArray(interests)) {
-      return res.status(400).json({ message: "Interests must be an array." });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found." });
-
-    // Merge old + new interests and remove duplicates
-    const updatedInterests = Array.from(
-      new Set([...user.interests, ...interests])
-    );
-
-    user.interests = updatedInterests;
-
-    await user.save();
-
-    res.status(200).json({
-      message: "Interests updated successfully.",
-      interests: user.interests,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-
-// ---------------- GET INTERESTS ----------------
-export const getInterests = async (req, res) => {
-  try {
-    const userId = req.userId;
-
-    const user = await User.findById(userId).select("interests");
-    if (!user) return res.status(404).json({ message: "User not found." });
-
-    res.status(200).json({ interests: user.interests });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-// ---------------- UPDATE ALERT RADIUS ----------------
-export const updateAlertRadius = async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { radius } = req.body;
-
-    if (!radius || radius < 500 || radius > 20000) {
-      return res.status(400).json({ 
-        message: "Radius must be between 500m and 20km." 
-      });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    user.alertRadius = radius;
-    await user.save();
-
-    res.status(200).json({ 
-      message: "Alert radius updated successfully", 
-      alertRadius: user.alertRadius 
-    });
-  } catch (err) {
+    console.error("❌ Error in updateProfile:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
