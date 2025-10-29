@@ -39,15 +39,19 @@ export const createAlert = async (req, res) => {
       },
     }).select("_id location alertRadius");
 
-    // 2. Filter them by their personal radius
+    // 2. Filter them by their personal radius and send to all their connections
     for (const user of interestedUsers) {
       const distance = haversineDistance(location.coordinates, user.location.coordinates);
 
       if (distance <= user.alertRadius) {
-        // You need to map users -> socket IDs somewhere (like onlineUsers Map)
-        const socketId = req.app.get("onlineUsers")?.get(user._id.toString());
-        if (socketId) {
-          io.to(socketId).emit("new_alert", newAlert);
+        // Get all socket connections for this user
+        const userSockets = req.app.get("onlineUsers")?.get(user._id.toString());
+        if (userSockets && userSockets.size > 0) {
+          // Send alert to all user's active connections (multiple tabs)
+          userSockets.forEach(socketId => {
+            io.to(socketId).emit("new_alert", newAlert);
+          });
+          console.log(`📤 Sent alert to user ${user._id} (${userSockets.size} connections)`);
         }
       }
     }
