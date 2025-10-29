@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import { AuthContext } from "./AuthContext";
+import apiRequest from "../lib/apiRequest";
 
 export const SocketContext = createContext();
 
@@ -39,22 +40,12 @@ export const SocketContextProvider = ({ children }) => {
         // Fetch existing alerts from API (nearby + subscribed categories only)
         if (currentUser.interests && currentUser.interests.length > 0) {
           try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts/near-by-category`, {
-              method: 'POST',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                categories: currentUser.interests
-              })
+            const response = await apiRequest.post("/alerts/near-by-category", {
+              categories: currentUser.interests
             });
             
-            if (response.ok) {
-              const data = await response.json();
-              setAlerts(data.alerts || []);
-              console.log("📋 Loaded existing alerts (nearby + subscribed):", data.alerts?.length || 0);
-            }
+            setAlerts(response.data.alerts || []);
+            console.log("📋 Loaded exisno no ting alerts (nearby + subscribed):", response.data.alerts?.length || 0);
           } catch (error) {
             console.error("❌ Failed to fetch existing alerts:", error);
           }
