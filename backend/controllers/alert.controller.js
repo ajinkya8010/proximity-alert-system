@@ -140,6 +140,14 @@ export const getAlertsNearbyByCategory = async (req, res) => {
     const userId = req.userId;
     const { categories } = req.body; // expecting an array, e.g. ["jobs", "tutoring"]
 
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Validate limit (max 50 per page)
+    const validLimit = Math.min(limit, 50);
+
     // ✅ Check categories format
     if (!categories || !Array.isArray(categories) || categories.length === 0) {
       return res.status(400).json({ message: "Categories must be a non-empty array." });
@@ -170,24 +178,90 @@ export const getAlertsNearbyByCategory = async (req, res) => {
       return res.status(404).json({ message: "User location not found" });
     }
 
-    // ✅ Query alerts nearby that match any of the categories
-    const alerts = await Alert.find({
+    // Build query using $geoWithin instead of $near for pagination compatibility
+    const radiusInRadians = (user.alertRadius || 5000) / 6378100; // Convert meters to radians (Earth radius = 6378100m)
+    
+    const query = {
       category: { $in: filteredCategories },
       location: {
-        $near: {
-          $geometry: user.location,
-          $maxDistance: user.alertRadius || 5000
+        $geoWithin: {
+          $centerSphere: [user.location.coordinates, radiusInRadians]
         }
       }
-    }).sort({ createdAt: -1 });
+    };
 
-    res.status(200).json({ alerts });
+    // ✅ Query alerts nearby that match any of the categories with pagination
+    const alerts = await Alert.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(validLimit)
+      .populate('createdBy', 'name');
+
+    // Get total count for pagination info
+    const total = await Alert.countDocuments(query);
+    const totalPages = Math.ceil(total / validLimit);
+
+    res.status(200).json({ 
+      alerts,
+      pagination: {
+        page,
+        limit: validLimit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
   } catch (err) {
     console.error("❌ Error in getAlertsNearbyByCategory:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
+
+// ---------------- GET MY ALERTS ----------------
+export const getMyAlerts = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Validate limit (max 50 per page)
+    const validLimit = Math.min(limit, 50);
+
+    // Build query for user's alerts
+    const query = { createdBy: userId };
+
+    // Get user's alerts with pagination
+    const alerts = await Alert.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(validLimit)
+      .populate('createdBy', 'name');
+
+    // Get total count for pagination info
+    const total = await Alert.countDocuments(query);
+    const totalPages = Math.ceil(total / validLimit);
+
+    res.status(200).json({
+      alerts,
+      pagination: {
+        page,
+        limit: validLimit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
+  } catch (err) {
+    console.error("❌ Error in getMyAlerts:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
 // ---------------- DELETE ALERT ----------------
 export const deleteAlert = async (req, res) => {
