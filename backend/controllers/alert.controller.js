@@ -182,16 +182,17 @@ export const getAlertsNearbyByCategory = async (req, res) => {
       return res.status(404).json({ message: "User location not found" });
     }
 
-    // Build query using $geoWithin instead of $near for pagination compatibility
-    const radiusInRadians = (user.alertRadius || 5000) / 6378100; // Convert meters to radians (Earth radius = 6378100m)
+    // Use $near like the working getAlertsNearMe function
+    const radius = user.alertRadius || 5000; // default = 5km
     
     const query = {
       category: { $in: filteredCategories },
       location: {
-        $geoWithin: {
-          $centerSphere: [user.location.coordinates, radiusInRadians]
-        }
-      }
+        $near: {
+          $geometry: user.location,
+          $maxDistance: radius, // direct meters, no conversion needed
+        },
+      },
     };
 
     // ✅ Query alerts nearby that match any of the categories with pagination
@@ -201,8 +202,16 @@ export const getAlertsNearbyByCategory = async (req, res) => {
       .limit(validLimit)
       .populate('createdBy', 'name');
 
-    // Get total count for pagination info
-    const total = await Alert.countDocuments(query);
+    // Get total count for pagination info (need separate query without $near for count)
+    const countQuery = {
+      category: { $in: filteredCategories },
+      location: {
+        $geoWithin: {
+          $centerSphere: [user.location.coordinates, radius / 6378137]
+        }
+      }
+    };
+    const total = await Alert.countDocuments(countQuery);
     const totalPages = Math.ceil(total / validLimit);
 
     res.status(200).json({ 
