@@ -60,9 +60,6 @@ const onlineUsers = new Map();
 app.set("onlineUsers", onlineUsers);
 
 io.on("connection", (socket) => {
-  console.log("⚡ User connected:", socket.id);
-
-  // pass onlineUsers into handler
   alertSocketHandler(io, socket, onlineUsers);
 });
 

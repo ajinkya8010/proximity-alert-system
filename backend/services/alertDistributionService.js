@@ -1,6 +1,6 @@
 import { User } from "../models/user.model.js";
 import { haversineDistance } from "../utils/distance.js";
-import { redisSub } from "../config/redis.js";
+import { redisSub, redis } from "../config/redis.js";
 
 class AlertDistributionService {
   constructor() {
@@ -72,8 +72,9 @@ class AlertDistributionService {
             });
             console.log(`📤 Sent alert to user ${user._id} (${userSockets.size} connections) via Redis`);
           } else {
-            console.log(`⚠️ User ${user._id} is offline - will queue for later (Redis)`);
-            // TODO: Queue for offline users in Step 5
+            // User is offline - queue the alert for later delivery
+            await this.queueAlertForOfflineUser(user._id, alert._id);
+            console.log(`📥 Queued alert ${alert._id} for offline user ${user._id}`);
           }
         } else {
           console.log(`❌ User ${user._id} outside radius: ${distance}m > ${user.alertRadius}m (Redis)`);
@@ -83,6 +84,64 @@ class AlertDistributionService {
       console.log(`✅ Alert distribution completed via Redis: ${alert._id}`);
     } catch (error) {
       console.error("❌ Error in alert distribution:", error);
+    }
+  }
+
+  // Queue alert for offline user
+  async queueAlertForOfflineUser(userId, alertId) {
+    try {
+      const queueKey = `user:${userId}:alerts`;
+      
+      // Add alert ID to user's queue (LPUSH adds to front of list)
+      await redis.lpush(queueKey, alertId);
+      
+      // Set TTL for the queue (7 days = 604800 seconds)
+      await redis.expire(queueKey, 7 * 24 * 60 * 60);
+      
+      console.log(`📥 Alert ${alertId} queued for user ${userId} (TTL: 7 days)`);
+    } catch (error) {
+      console.error(`❌ Error queueing alert for user ${userId}:`, error);
+    }
+  }
+
+  // Get queued alerts for user (when they come online)
+  async getQueuedAlertsForUser(userId) {
+    try {
+      const queueKey = `user:${userId}:alerts`;
+      
+      // Get all alert IDs from user's queue
+      const alertIds = await redis.lrange(queueKey, 0, -1);
+      
+      if (alertIds.length === 0) {
+        return [];
+      }
+
+      // Filter out invalid ObjectIds and fetch full alert details from MongoDB
+      const { Alert } = await import("../models/alert.model.js");
+      const mongoose = await import("mongoose");
+      
+      // Filter valid ObjectIds only
+      const validAlertIds = alertIds.filter(id => mongoose.default.Types.ObjectId.isValid(id));
+      
+      if (validAlertIds.length === 0) {
+        // Clear invalid queue
+        await redis.del(queueKey);
+        console.log(`🗑️ Cleared invalid alert queue for user ${userId}`);
+        return [];
+      }
+
+      const alerts = await Alert.find({
+        _id: { $in: validAlertIds }
+      }).populate('createdBy', 'name').sort({ createdAt: -1 });
+
+      // Clear the queue after fetching
+      await redis.del(queueKey);
+      
+      console.log(`📬 Retrieved ${alerts.length} queued alerts for user ${userId}`);
+      return alerts;
+    } catch (error) {
+      console.error(`❌ Error getting queued alerts for user ${userId}:`, error);
+      return [];
     }
   }
 }

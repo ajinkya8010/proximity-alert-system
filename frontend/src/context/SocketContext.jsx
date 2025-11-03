@@ -79,6 +79,25 @@ export const SocketContextProvider = ({ children }) => {
         );
       });
 
+      // Handle queued alerts delivered (when user comes back online)
+      newSocket.on("queued_alerts_delivered", (data) => {
+        console.log("📬 Queued alerts delivered:", data);
+        
+        // Show summary notification for queued alerts
+        toast.success(
+          data.message,
+          {
+            duration: 8000,
+            position: 'top-right',
+            style: {
+              background: '#3B82F6',
+              color: 'white',
+            },
+            icon: '📬',
+          }
+        );
+      });
+
       // Handle connection errors
       newSocket.on("connect_error", (error) => {
         console.error("❌ Socket connection error:", error);
