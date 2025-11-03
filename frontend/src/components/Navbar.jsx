@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
+import NotificationBell from "./NotificationBell";
 
 function Navbar() {
   const { currentUser, updateUser } = useContext(AuthContext);
@@ -54,6 +55,9 @@ function Navbar() {
                   Create Alert
                 </Link>
               </div>
+
+              {/* Notification Bell */}
+              <NotificationBell />
 
               {/* User Profile Dropdown */}
               <div className="relative group">

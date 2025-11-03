@@ -1,4 +1,5 @@
 import { User } from "../models/user.model.js";
+import { Notification } from "../models/notification.model.js";
 import { haversineDistance } from "../utils/distance.js";
 import { redisSub, redis } from "../config/redis.js";
 
@@ -64,6 +65,9 @@ class AlertDistributionService {
           // Get all socket connections for this user
           const userSockets = this.onlineUsers?.get(user._id.toString());
           console.log(`🔌 User ${user._id} sockets:`, userSockets ? userSockets.size : 0, "(via Redis)");
+          
+          // Create notification entry for this user (both online and offline)
+          await this.createNotificationForUser(user._id, alert, userSockets ? "new_alert" : "queued_alert");
           
           if (userSockets && userSockets.size > 0) {
             // Send alert to all user's active connections (multiple tabs)
@@ -142,6 +146,26 @@ class AlertDistributionService {
     } catch (error) {
       console.error(`❌ Error getting queued alerts for user ${userId}:`, error);
       return [];
+    }
+  }
+
+  // Create notification entry for user
+  async createNotificationForUser(userId, alert, type = "new_alert") {
+    try {
+      const notification = new Notification({
+        userId,
+        alertId: alert._id,
+        type,
+        title: `New ${alert.category} alert`,
+        message: alert.title,
+        category: alert.category,
+        isRead: false
+      });
+
+      await notification.save();
+      console.log(`📝 Created notification for user ${userId}: ${alert.title}`);
+    } catch (error) {
+      console.error(`❌ Error creating notification for user ${userId}:`, error);
     }
   }
 }

@@ -8,7 +8,8 @@ import cors from "cors";
 
 import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/user.route.js";
-import alertRoute from "./routes/alert.route.js"; 
+import alertRoute from "./routes/alert.route.js";
+import notificationRoute from "./routes/notification.route.js"; 
 import alertSocketHandler from "./sockets/alert.socket.js";
 import { redis, redisPub, redisSub } from "./config/redis.js";
 import alertDistributionService from "./services/alertDistributionService.js"; 
@@ -53,6 +54,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoute);
 app.use("/api/user", userRoute);
 app.use("/api/alerts", alertRoute);
+app.use("/api/notifications", notificationRoute);
 
 
 // ---------------- SOCKET HANDLERS ----------------
