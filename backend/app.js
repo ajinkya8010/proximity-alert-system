@@ -9,7 +9,8 @@ import cors from "cors";
 import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/user.route.js";
 import alertRoute from "./routes/alert.route.js"; 
-import alertSocketHandler from "./sockets/alert.socket.js"; 
+import alertSocketHandler from "./sockets/alert.socket.js";
+import { redis } from "./config/redis.js"; 
 
 
 dotenv.config({ path: "./.env" });
@@ -31,8 +32,9 @@ const io = new Server(server, {
 });
 
 
-// Attach io to app so controllers can use it
+// Attach io and redis to app so controllers can use them
 app.set("io", io);
+app.set("redis", redis);
 
 
 // ---------------- MIDDLEWARE ----------------
@@ -64,12 +66,24 @@ io.on("connection", (socket) => {
 
 
 // ---------------- START SERVER ----------------
-connectDB()
-  .then(() => {
+const startServer = async () => {
+  try {
+    // Connect to MongoDB
+    await connectDB();
+    console.log("✅ MongoDB connected");
+
+    // Connect to Redis
+    await redis.connect();
+    console.log("✅ Redis connected");
+
+    // Start HTTP server
     server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
-  })
-  .catch((err) => {
-    console.log("❌ MongoDB connection failed:", err);
-  });
+  } catch (err) {
+    console.error("❌ Server startup failed:", err);
+    process.exit(1);
+  }
+};
+
+startServer();
