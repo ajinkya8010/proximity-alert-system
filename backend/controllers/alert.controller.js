@@ -26,8 +26,8 @@ export const createAlert = async (req, res) => {
     });
 
     // ---------------- REDIS PUBLISH ----------------
-    const redis = req.app.get("redis");
-    if (redis) {
+    const redisPub = req.app.get("redisPub");
+    if (redisPub) {
       try {
         const alertMessage = JSON.stringify({
           alertId: newAlert._id,
@@ -35,7 +35,7 @@ export const createAlert = async (req, res) => {
           timestamp: new Date().toISOString()
         });
         
-        await redis.publish("alerts_channel", alertMessage);
+        await redisPub.publish("alerts_channel", alertMessage);
         console.log("📤 Published alert to Redis:", newAlert._id);
       } catch (redisError) {
         console.error("❌ Redis publish error:", redisError.message);
@@ -43,47 +43,10 @@ export const createAlert = async (req, res) => {
       }
     }
 
-    // ---------------- SOCKET EMISSION (FALLBACK) ----------------
-    const io = req.app.get("io");
-
-    // 1. Find all users who have this category in interests
-    const interestedUsers = await User.find({
-      interests: category,
-      location: {
-        $near: {
-          $geometry: location,
-          $maxDistance: 10000, // hard cap at 10km for performance
-        },
-      },
-    }).select("_id location alertRadius");
-
-    console.log(`🔍 Found ${interestedUsers.length} users interested in ${category}`);
-
-    // 2. Filter them by their personal radius and send to all their connections
-    for (const user of interestedUsers) {
-      const distance = haversineDistance(location.coordinates, user.location.coordinates);
-      console.log(`📏 User ${user._id}: distance=${distance}m, alertRadius=${user.alertRadius}m`);
-
-      if (distance <= user.alertRadius) {
-        // Get all socket connections for this user
-        const userSockets = req.app.get("onlineUsers")?.get(user._id.toString());
-        console.log(`🔌 User ${user._id} sockets:`, userSockets ? userSockets.size : 0);
-        
-        if (userSockets && userSockets.size > 0) {
-          // Send alert to all user's active connections (multiple tabs)
-          userSockets.forEach(socketId => {
-            io.to(socketId).emit("new_alert", newAlert);
-          });
-          console.log(`📤 Sent alert to user ${user._id} (${userSockets.size} connections)`);
-        } else {
-          console.log(`⚠️ User ${user._id} is offline or no sockets found`);
-        }
-      } else {
-        console.log(`❌ User ${user._id} outside radius: ${distance}m > ${user.alertRadius}m`);
-      }
-    }
-
-    console.log("📢 Emitted alert via socket (fallback):", newAlert._id);
+    // ---------------- REDIS DISTRIBUTION ONLY ----------------
+    // Alert distribution is now handled by Redis pub/sub system
+    // No direct socket emission needed - Redis subscriber handles it
+    console.log("✅ Alert created and published to Redis for distribution");
 
     res.status(201).json({
       message: "Alert created successfully",

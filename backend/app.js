@@ -10,7 +10,8 @@ import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/user.route.js";
 import alertRoute from "./routes/alert.route.js"; 
 import alertSocketHandler from "./sockets/alert.socket.js";
-import { redis } from "./config/redis.js"; 
+import { redis, redisPub, redisSub } from "./config/redis.js";
+import alertDistributionService from "./services/alertDistributionService.js"; 
 
 
 dotenv.config({ path: "./.env" });
@@ -35,6 +36,7 @@ const io = new Server(server, {
 // Attach io and redis to app so controllers can use them
 app.set("io", io);
 app.set("redis", redis);
+app.set("redisPub", redisPub);
 
 
 // ---------------- MIDDLEWARE ----------------
@@ -72,9 +74,15 @@ const startServer = async () => {
     await connectDB();
     console.log("✅ MongoDB connected");
 
-    // Connect to Redis
+    // Connect to Redis clients
     await redis.connect();
-    console.log("✅ Redis connected");
+    await redisPub.connect();
+    await redisSub.connect();
+    console.log("✅ Redis clients connected");
+
+    // Initialize alert distribution service
+    alertDistributionService.initialize(io, onlineUsers);
+    await alertDistributionService.setupSubscriber();
 
     // Start HTTP server
     server.listen(PORT, () => {
