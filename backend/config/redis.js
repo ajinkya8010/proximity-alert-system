@@ -3,25 +3,17 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Create Redis client for general operations
-const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+// Create Redis clients with TLS support for Upstash
+const redisOptions = {
   retryDelayOnFailover: 100,
   maxRetriesPerRequest: 3,
   lazyConnect: true,
-});
+  tls: process.env.REDIS_URL?.includes('upstash.io') ? {} : undefined,
+};
 
-// Create separate Redis client for pub/sub (Redis best practice)
-const redisPub = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  lazyConnect: true,
-});
-
-const redisSub = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  lazyConnect: true,
-});
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", redisOptions);
+const redisPub = new Redis(process.env.REDIS_URL || "redis://localhost:6379", redisOptions);
+const redisSub = new Redis(process.env.REDIS_URL || "redis://localhost:6379", redisOptions);
 
 // Connection event handlers
 redis.on("connect", () => {
