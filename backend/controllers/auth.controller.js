@@ -73,7 +73,7 @@ export const loginUser = async (req, res) => {
       .cookie("token", token, {
         httpOnly: true,
         maxAge: maxAge,
-        sameSite: "Lax",
+        sameSite: process.env.COOKIE_SAME_SITE || "Lax",
         secure: process.env.NODE_ENV === "production",
       })
       .status(200)
