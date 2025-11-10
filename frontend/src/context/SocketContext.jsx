@@ -77,6 +77,31 @@ export const SocketContextProvider = ({ children }) => {
             icon: '🚨',
           }
         );
+
+        // Trigger notification bell update
+        window.dispatchEvent(new CustomEvent('newNotification'));
+      });
+
+      // Handle queued alerts delivered (when user comes back online)
+      newSocket.on("queued_alerts_delivered", (data) => {
+        console.log("📬 Queued alerts delivered:", data);
+        
+        // Show ONLY summary notification for queued alerts (no individual toasts)
+        toast.success(
+          `${data.message} - Check your notifications 🔔`,
+          {
+            duration: 8000,
+            position: 'top-right',
+            style: {
+              background: '#3B82F6',
+              color: 'white',
+            },
+            icon: '📬',
+          }
+        );
+
+        // Update notification bell count
+        window.dispatchEvent(new CustomEvent('newNotification'));
       });
 
       // Handle connection errors
