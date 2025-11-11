@@ -14,12 +14,68 @@ A real-time location-aware alerting platform that delivers instant notifications
 
 ## 🏗️ Architecture
 
-```
-Frontend (React + Vite) ←→ Backend (Node.js + Express) ←→ MongoDB
-                ↓                        ↓
-        Socket.IO Client ←→ Socket.IO Server ←→ Redis Pub/Sub
-                                        ↓
-                              Alert Distribution Service
+```mermaid
+graph TB
+    %% Users
+    U1[User A - Online]
+    U2[User B - Offline]
+
+    %% Frontend
+    FE[React Frontend<br/>Socket.IO + Context API]
+
+    %% Backend Services
+    BE[Node.js Backend<br/>Express + Socket.IO]
+    AUTH[JWT Auth<br/>Middleware]
+    ADS[Alert Distribution<br/>Service]
+
+    %% Redis Layer
+    PUB[Redis Publisher<br/>PUBLISH alerts_channel]
+    SUB[Redis Subscriber<br/>SUBSCRIBE alerts_channel]
+    QUEUE[Redis Queues<br/>user:id:alerts TTL 7d]
+
+    %% Database
+    MONGO[(MongoDB Atlas<br/>Users + Alerts + Notifications)]
+
+    %% User Flows
+    U1 <--> FE
+    U2 -.-> FE
+    FE <--> BE
+    FE --> AUTH
+
+    %% Alert Distribution
+    BE --> PUB
+    PUB --> SUB
+    SUB --> ADS
+    ADS --> MONGO
+
+    %% Online Flow
+    ADS -->|Online User| BE
+    BE -->|Socket Emit| FE
+    FE --> U1
+
+    %% Offline Flow
+    ADS -->|Offline User| QUEUE
+
+    %% Reconnection
+    U2 -->|Reconnects| FE
+    FE --> BE
+    BE --> QUEUE
+    QUEUE -->|Deliver Queued| BE
+    BE --> FE
+    FE --> U2
+
+    %% Styling
+    classDef user fill:#e3f2fd
+    classDef frontend fill:#e8f5e8
+    classDef backend fill:#fff3e0
+    classDef redis fill:#ffebee
+    classDef database fill:#f3e5f5
+
+    class U1,U2 user
+    class FE frontend
+    class BE,AUTH,ADS backend
+    class PUB,SUB,QUEUE redis
+    class MONGO database
 ```
 
 ## �️ Tech Stack
@@ -60,21 +116,19 @@ Frontend (React + Vite) ←→ Backend (Node.js + Express) ←→ MongoDB
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/proximity-alert-system.git
+git clone <your-repository-url>
 cd proximity-alert-system
 
 # Backend setup
 cd backend
 npm install
-cp .env.example .env
-# Configure environment variables
+# Create .env file and configure environment variables
 npm start
 
 # Frontend setup (new terminal)
 cd frontend
 npm install
-cp .env.example .env
-# Configure API URL
+# Create .env file and configure API URL
 npm run dev
 ```
 
@@ -230,8 +284,8 @@ FRONTEND_URL=https://your-app.com
 # Frontend
 VITE_API_BASE_URL=https://api.your-app.com/api
 ```
-https://proximity-alert-system-1.onrender.com/
 
+**🚀 Live Demo:** [https://proximity-alert-system-1.onrender.com](https://proximity-alert-system-1.onrender.com)
 
 ## 📈 Performance Features
 
@@ -257,7 +311,6 @@ https://proximity-alert-system-1.onrender.com/
 3. Commit changes (`git commit -m 'Add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
-
 
 ## 🎯 Use Cases
 
