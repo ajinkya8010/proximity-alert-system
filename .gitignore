@@ -5,6 +5,11 @@ dist/
 .env
 .env.local
 
+# Test Coverage
+coverage/
+*.lcov
+.nyc_output/
+
 # Logs
 *.log
 logs/
