@@ -1,5 +1,8 @@
 # 🚨 Proximity Alert System
 
+[![Tests](https://github.com/ajinkya8010/proximity-alert-system/actions/workflows/test.yml/badge.svg)](https://github.com/ajinkya8010/proximity-alert-system/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/ajinkya8010/proximity-alert-system/branch/main/graph/badge.svg)](https://codecov.io/gh/ajinkya8010/proximity-alert-system)
+
 A real-time location-aware alerting platform that delivers instant notifications about nearby events, emergencies, and services based on user interests and geographic proximity.
 
 ## 🎯 Key Features
